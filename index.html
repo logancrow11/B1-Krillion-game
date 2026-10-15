@@ -1,0 +1,332 @@
+
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Deep Dive</title>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,800&family=Instrument+Sans:wght@400;600&display=swap" rel="stylesheet">
+<style>
+:root{--ink:#EAF4F7;--dim:#A5C0CC;--foam:#7FD6C8;--amber:#FFB86B;--rose:#FF9BAE;--l:36;color-scheme:dark;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+*,*::before,*::after{box-sizing:inherit}
+html{height:100%;scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;min-height:100%;background:hsl(var(--h,198) 72% calc(var(--l)*1%));color:var(--ink);font:400 18px/1.45 "Instrument Sans",system-ui,sans-serif;transition:background 1.2s ease}
+main{position:relative;z-index:1;max-width:620px;margin:0 auto;padding:28px 22px 48px 70px}
+h1,h2,.big{font-family:"Bricolage Grotesque","Instrument Sans",system-ui,sans-serif;font-weight:800;letter-spacing:-.02em;line-height:1.05;margin:0}
+h1{font-size:clamp(46px,13vw,76px)}
+.lede{color:var(--dim);max-width:34ch;margin:18px 0 32px}
+button{font:600 17px "Instrument Sans",system-ui,sans-serif;background:var(--foam);color:#06293A;border:0;border-radius:10px;padding:14px 22px;cursor:pointer}
+button.ghost{background:transparent;color:var(--ink);border:1.5px solid var(--dim)}
+button:focus-visible,input:focus-visible{outline:3px solid var(--amber);outline-offset:3px}
+.hud{display:flex;justify-content:space-between;align-items:baseline;color:var(--dim);margin-bottom:12px}
+.depth{font-family:"Bricolage Grotesque",system-ui,sans-serif;font-weight:800;font-size:34px;color:var(--ink)}
+.air{height:8px;border-radius:99px;background:rgba(255,255,255,.14);overflow:hidden;margin-bottom:40px}
+.air i{display:block;height:100%;width:100%;background:var(--foam);border-radius:99px}
+.air.low i{background:var(--rose)}
+.prompt{font-size:clamp(30px,8vw,44px);margin-bottom:28px}
+input{width:100%;font:500 26px "Instrument Sans",system-ui,sans-serif;color:var(--ink);background:transparent;border:0;border-bottom:2px solid var(--dim);padding:8px 0;margin-bottom:24px;border-radius:0}
+input::placeholder{color:rgba(234,244,247,.4)}
+.chip{display:inline-block;font-weight:600;padding:4px 12px;border-radius:99px;background:rgba(0,0,0,.28);margin-bottom:14px}
+.t0{color:#B4BCC2}.t1{color:#9CD3F5}.t2{color:#FF6B6B}.t3{color:#B48CFF}.t4{color:#FFD24A}
+.gain{font-size:64px;margin-bottom:6px}
+.sub{color:var(--dim);margin:0 0 6px}
+.row{display:grid;grid-template-columns:1fr auto;gap:2px 16px;padding:12px 0;border-top:1px solid rgba(255,255,255,.16)}
+.row small{color:var(--dim);grid-column:1}
+.row b{grid-row:1/3;grid-column:2;align-self:center;font-weight:600}
+.btns{display:flex;gap:12px;flex-wrap:wrap;margin-top:28px}
+.note{color:var(--dim);font-size:15px;margin-top:22px}
+.ed{display:block;background:rgba(0,0,0,.22);border-radius:12px;padding:14px 16px;margin:14px 0}
+.ed label{display:block;color:var(--dim);font-size:15px;margin:10px 0}
+.ed input,.ed textarea{display:block;width:100%;font:400 17px "Instrument Sans",system-ui,sans-serif;color:var(--ink);background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.22);border-radius:8px;padding:8px 10px;margin:4px 0 0}
+.ed button{margin-top:8px;padding:10px 16px;font-size:15px}
+.sec{font-size:26px;margin:40px 0 6px}
+.pa{border-top:1px solid rgba(255,255,255,.16);padding:12px 0}
+.pa summary{cursor:pointer;font-weight:600}
+.tg{font-weight:600;margin:14px 0 2px}
+.ans{margin:0}
+.you{font-weight:800;text-decoration:underline}
+#sea{position:fixed;inset:0;overflow:hidden;pointer-events:none;z-index:0}
+#sun{position:absolute;inset:0 0 35% 0;background:linear-gradient(rgba(205,247,255,.45),rgba(205,247,255,0));transition:opacity 1.4s ease}
+#ruler{position:absolute;left:0;top:0;width:100%;transition:transform 1.4s ease}
+.tk{position:absolute;left:0;width:12px;height:1px;background:rgba(255,255,255,.35)}
+.tk.mj{width:26px;background:rgba(255,255,255,.65)}
+.lb{position:absolute;left:30px;transform:translateY(-50%);font:600 11px "Instrument Sans",system-ui,sans-serif;color:rgba(255,255,255,.7);font-style:normal}
+.zn{position:absolute;left:0;width:100%;height:1px;background:rgba(255,255,255,.2)}
+.zn span{position:absolute;right:14px;top:-22px;font:600 13px "Instrument Sans",system-ui,sans-serif;color:rgba(255,255,255,.55)}
+#mark{position:absolute;left:0;width:34px;height:3px;background:#FFD24A;border-radius:0 3px 3px 0}
+@media (prefers-reduced-motion:reduce){body{transition:none}#ruler,#sun{transition:none}}
+</style>
+</head>
+<body>
+<main id="app"></main>
+<script>
+/* ============ EDIT THIS SECTION ============
+   One object per prompt. Under each tier, list valid answers separated by commas.
+   Alternative spellings/nicknames for the SAME answer are separated by "/"
+   (first one is the name shown). Tiers: plankton = very common, mackerel = common-ish,
+   anglerfish = uncommon, viperfish = rare, abyssal = the rare ones almost nobody says.
+   Replace these prompts with your own. */
+let PROMPTS=[
+ {q:"Name a currency of the world.",
+  plankton:"Dollar/US Dollar/American Dollar/USD, Euro, Pound/Pound Sterling/Sterling/GBP, Yen/Japanese Yen",
+  mackerel:"Yuan/Renminbi/RMB, Rupee/Indian Rupee, Peso, Franc/Swiss Franc, Ruble/Rouble/Russian Ruble, Won/Korean Won/South Korean Won, Australian Dollar, Canadian Dollar",
+  anglerfish:"Rand/South African Rand, Real/Brazilian Real, Krona/Swedish Krona, Krone/Norwegian Krone, Danish Krone, Lira/Turkish Lira, Dinar, Dirham/UAE Dirham, Riyal/Saudi Riyal, Baht/Thai Baht, Shekel/Israeli Shekel, Zloty, Ringgit, Rupiah, Forint, Koruna/Czech Koruna, New Zealand Dollar, Hong Kong Dollar, Singapore Dollar, Taiwan Dollar/New Taiwan Dollar",
+  viperfish:"Dong/Vietnamese Dong, Kwacha, Birr, Naira, Cedi, Shilling, Taka, Kyat, Rial, Hryvnia, Tenge, Lek, Lev, Leu, Colon, Quetzal, Sol/Nuevo Sol, Boliviano, Guarani, Bolivar, Gourde, Lempira, Cordoba, Dram, Lari, Som, Manat, Afghani, Kip, Riel, Tugrik/Togrog, Metical, Kwanza, Pula, Pataca, Escudo",
+  abyssal:"Ngultrum, Ouguiya, Dalasi, Lilangeni, Loti, Leone, Vatu, Tala, Paanga, Denar, Ariary, Kina, Rufiyaa, Nakfa, Balboa, Somoni, Florin, Dobra"},
+ {q:"Name a dog breed.",
+  plankton:"French Bulldog/Frenchie, Labrador Retriever/Labrador/Lab, Golden Retriever/Golden, German Shepherd Dog/German Shepherd/Alsatian/GSD, Dachshund/Sausage Dog, Poodle, Beagle, Rottweiler/Rottie",
+  mackerel:"German Shorthaired Pointer, Bulldog/English Bulldog, Cane Corso, Cavalier King Charles Spaniel/Cavalier, Yorkshire Terrier/Yorkie, Australian Shepherd/Aussie, Doberman Pinscher/Doberman, Pembroke Welsh Corgi/Corgi, Miniature Schnauzer, Boxer, Pomeranian/Pom, Bernese Mountain Dog, Shih Tzu, Great Dane, Boston Terrier, Chihuahua, Havanese, Border Collie, English Springer Spaniel/Springer Spaniel, Miniature American Shepherd, Shetland Sheepdog/Sheltie, Siberian Husky/Husky",
+  anglerfish:"Brittany, Belgian Malinois/Malinois, Cocker Spaniel, Basset Hound, English Cocker Spaniel, Vizsla, Maltese, Pug, Collie, Mastiff, Rhodesian Ridgeback, Papillon, Portuguese Water Dog, Shiba Inu, West Highland White Terrier/Westie, Newfoundland, Australian Cattle Dog/Blue Heeler, Whippet, Bichon Frise, Dalmatian, Wirehaired Pointing Griffon, Giant Schnauzer, Italian Greyhound, Weimaraner, Samoyed, Chesapeake Bay Retriever, Scottish Terrier/Scottie, German Wirehaired Pointer, Bloodhound, Russell Terrier",
+  viperfish:"Staffordshire Bull Terrier/Staffy, Akita, Saint Bernard/St Bernard, Boykin Spaniel, Cardigan Welsh Corgi, Great Pyrenees, Miniature Pinscher, Cairn Terrier, Nova Scotia Duck Tolling Retriever, Airedale Terrier, Great Swiss Mountain Dog, Chinese Crested, Irish Setter, Biewer Terrier, Irish Wolfhound, Soft Coated Wheaten Terrier, Lagotto Romagnolo, Bullmastiff, Coton de Tulear, Chinese Shar-Pei/Shar Pei, Alaskan Malamute/Malamute, Brussels Griffon, Lhasa Apso, Rat Terrier, Keeshond, Bull Terrier, Old English Sheepdog, Anatolian Shepherd Dog, English Setter, Pekingese, Border Terrier, Basenji, Standard Schnauzer, Chow Chow, Dogue de Bordeaux, Leonberger, American Staffordshire Terrier, Flat-Coated Retriever, Borzoi, Bouvier des Flandres",
+  abyssal:"Dogo Argentino, Beauceron, Japanese Chin, Gordon Setter, Afghan Hound, Tibetan Terrier, Xoloitzcuintli, American Eskimo Dog, Norwegian Elkhound, Saluki, Bearded Collie, Tibetan Mastiff, Greyhound, Affenpinscher, Kerry Blue Terrier, Scottish Deerhound, Puli, Komondor, Kuvasz, Pharaoh Hound, Otterhound, Finnish Spitz, Azawakh, Chinook, Harrier, Sloughi, Norwegian Lundehund, Canaan Dog, Skye Terrier, Ibizan Hound, Dandie Dinmont Terrier, Bergamasco Sheepdog, Pyrenean Shepherd, Lancashire Heeler, Cesky Terrier, Berger Picard"},
+ {q:"Name a programming language.",
+  plankton:"Python, Java, JavaScript/JS, C, C++/Cpp, C#/C Sharp/CSharp",
+  mackerel:"Visual Basic/VB/Visual Basic .NET, R, SQL, Delphi/Object Pascal, Fortran, Scratch",
+  anglerfish:"Perl, PHP, Rust, Go/Golang, Assembly/Assembly Language/Assembler, Swift, Ada, MATLAB, Julia",
+  viperfish:"Kotlin, Ruby, TypeScript, Dart, Lua, Lisp, Haskell, COBOL, Scala, Objective-C, Prolog, OCaml, Groovy, Bash/Shell, PowerShell, Clojure",
+  abyssal:"Zig, Elixir, Erlang, Racket, Brainfuck, Smalltalk, Forth, Idris, Crystal, Nim, Haxe, F#/F Sharp, Apex, Solidity"},
+ {q:"Name a US state.",
+  plankton:"California/Cali, Texas, Florida, New York, Pennsylvania/Penn",
+  mackerel:"Illinois, Ohio, Georgia, North Carolina/N Carolina, Michigan, New Jersey, Virginia, Washington/Washington State, Arizona, Tennessee",
+  anglerfish:"Massachusetts, Indiana, Missouri, Maryland, Colorado, Wisconsin, Minnesota, South Carolina, Alabama, Louisiana, Kentucky, Oregon, Oklahoma, Connecticut, Utah",
+  viperfish:"Nevada, Iowa, Arkansas, Kansas, Mississippi, New Mexico, Idaho, Nebraska, West Virginia, Hawaii, New Hampshire, Maine",
+  abyssal:"Montana, Rhode Island, Delaware, South Dakota, North Dakota, Alaska, Vermont, Wyoming"},
+ {q:"Name a country in Africa.",
+  plankton:"Nigeria, Ethiopia, Egypt, DR Congo/Democratic Republic of the Congo/DRC, Tanzania, South Africa",
+  mackerel:"Kenya, Uganda, Sudan, Algeria, Morocco, Angola, Mozambique, Ghana, Madagascar, Cameroon, Ivory Coast/Cote dIvoire",
+  anglerfish:"Niger, Burkina Faso, Mali, Malawi, Zambia, Chad, Somalia, Senegal, Zimbabwe, South Sudan, Rwanda",
+  viperfish:"Guinea, Benin, Burundi, Tunisia, Togo, Sierra Leone, Libya, Congo/Republic of the Congo, Liberia, Central African Republic/CAR, Mauritania, Eritrea, Namibia, Gambia",
+  abyssal:"Botswana, Gabon, Lesotho, Guinea-Bissau, Equatorial Guinea, Mauritius, Eswatini/Swaziland, Djibouti, Comoros, Cabo Verde/Cape Verde, Sao Tome and Principe, Seychelles"},
+ {q:"Name a Pixar film.",
+  plankton:"Toy Story, Finding Nemo/Finding Dory, Inside Out/Inside Out 2, The Incredibles/Incredibles 2",
+  mackerel:"Up, Coco, Monsters Inc/Monsters Incorporated, Cars, Ratatouille, WALL-E",
+  anglerfish:"Monsters University, Brave, A Bugs Life/Bugs Life, Elemental, Onward, Soul",
+  viperfish:"Luca, Turning Red, The Good Dinosaur/Good Dinosaur, Lightyear",
+  abyssal:"Elio, Hoppers"},
+ {q:"Name a Beatles song.",
+  plankton:"Come Together, Let It Be, Hey Jude, Yesterday, Here Comes the Sun",
+  mackerel:"Help, Love Me Do, All You Need Is Love, I Want to Hold Your Hand, Twist and Shout, Blackbird, In My Life, She Loves You",
+  anglerfish:"Something, Eleanor Rigby, Yellow Submarine, A Hard Days Night/Hard Days Night, Penny Lane, Get Back, Dont Let Me Down, Michelle, Lucy in the Sky with Diamonds, With a Little Help from My Friends, Cant Buy Me Love, Revolution, Back in the USSR, Strawberry Fields Forever, Ticket to Ride, Octopuss Garden, While My Guitar Gently Weeps, Norwegian Wood",
+  viperfish:"Day Tripper, Paperback Writer, Drive My Car, Nowhere Man, I Saw Her Standing There, Golden Slumbers, Here There and Everywhere, Rocky Raccoon, Ob-La-Di Ob-La-Da/Obladi Oblada, Hello Goodbye, Lady Madonna, The Long and Winding Road, Eight Days a Week, Helter Skelter, Dear Prudence, I Am the Walrus, Taxman, Got to Get You into My Life, And I Love Her, Girl, Julia",
+  abyssal:"Within You Without You, Savoy Truffle, Wild Honey Pie, Cry Baby Cry, Maxwells Silver Hammer, Piggies, Glass Onion, Honey Pie, Good Day Sunshine, Tomorrow Never Knows, Rain, Free as a Bird, Now and Then, Flying, Yer Blues, Im Only Sleeping, Doctor Robert, For No One, Mother Natures Son, Sexy Sadie, Happiness Is a Warm Gun, Old Brown Shoe, Hey Bulldog"},
+ {q:"Name a Shakespeare play.",
+  plankton:"A Midsummer Nights Dream/Midsummer Nights Dream/Midsummer, Romeo and Juliet/Romeo Juliet, Hamlet, Macbeth, Twelfth Night",
+  mackerel:"Much Ado About Nothing, As You Like It, The Tempest/Tempest, The Comedy of Errors/Comedy of Errors, Julius Caesar, The Taming of the Shrew/Taming of the Shrew, Othello",
+  anglerfish:"King Lear/Lear, The Merry Wives of Windsor/Merry Wives of Windsor, The Winters Tale/Winters Tale, Richard III/Richard 3, Loves Labours Lost, Henry V/Henry 5, Measure for Measure, The Merchant of Venice/Merchant of Venice",
+  viperfish:"The Two Gentlemen of Verona/Two Gentlemen of Verona, Antony and Cleopatra, Pericles/Pericles Prince of Tyre, Henry IV Part One/Henry IV Part 1/Henry IV, Titus Andronicus, Cymbeline, Alls Well That Ends Well, Richard II/Richard 2, Coriolanus, King John",
+  abyssal:"Henry IV Part Two/Henry IV Part 2, Troilus and Cressida, Timon of Athens, Henry VI/Henry VI Part One/Henry VI Part Two/Henry VI Part Three, The Two Noble Kinsmen/Two Noble Kinsmen, Henry VIII/Henry 8, Edward III, Cardenio"},
+ {q:"Name a fruit.",
+  plankton:"Banana, Watermelon, Apple, Orange, Grape",
+  mackerel:"Mango, Melon/Cantaloupe/Honeydew, Mandarin/Tangerine/Clementine/Satsuma, Pear, Pineapple, Peach/Nectarine, Plantain",
+  anglerfish:"Lemon, Lime, Papaya, Plum, Grapefruit/Pomelo, Date, Strawberry, Avocado, Persimmon",
+  viperfish:"Apricot, Cherry, Coconut, Fig, Kiwi/Kiwifruit, Pomegranate, Raspberry, Blueberry, Blackberry, Cranberry, Gooseberry, Passion Fruit/Passionfruit, Lychee, Guava, Olive, Quince, Blackcurrant, Redcurrant",
+  abyssal:"Durian, Jackfruit, Mangosteen, Rambutan, Dragon Fruit/Pitaya, Starfruit/Carambola, Tamarillo, Feijoa, Loquat, Medlar, Cherimoya/Custard Apple, Soursop, Longan, Ackee, Physalis/Cape Gooseberry, Elderberry, Mulberry, Kumquat, Yuzu, Tomato, Breadfruit, Sapodilla"},
+ {q:"Name a river in the UK.",
+  plankton:"Thames/River Thames, Severn/River Severn",
+  mackerel:"Trent/River Trent, Wye/River Wye, Great Ouse, Tay/River Tay, Clyde/River Clyde, Spey/River Spey, Nene/River Nene",
+  anglerfish:"Avon, Dee, Tweed, Tyne, Tees, Wear, Mersey, Ouse, Medway, Exe, Tamar, Stour, Aire, Don, Derwent, Usk, Test, Humber, Forth, Ribble, Eden, Lune, Kennet",
+  viperfish:"Cam, Itchen, Wharfe, Calder, Dart, Teign, Fal, Taff, Towy, Teifi, Conwy, Findhorn, Ness, Lea, Wey, Mole, Cherwell, Windrush, Wandle, Colne, Nidd, Swale, Ure, Welland, Witham, Yare, Waveney, Orwell, Deben, Blackwater, Crouch, Arun, Adur, Rother",
+  abyssal:"Fleet, Tyburn, Effra, Walbrook, Westbourne, Lyn, Camel, Axe, Yealm, Erme, Rheidol, Dovey, Mawddach, Glaslyn, Carron, Etive, Awe, Orchy, Garry, Lochy, Helmsdale, Brora, Naver"}
+];
+let SECONDS=25;
+/* ============ END EDIT SECTION ============ */
+
+const TIERS=[{id:"plankton",name:"Plankton",pts:10},{id:"mackerel",name:"Schooler",pts:30},{id:"anglerfish",name:"Rare",pts:60},{id:"viperfish",name:"Deep cut",pts:85},{id:"abyssal",name:"One in a Krillion",pts:100}];
+const M=1;let MAX=0;const MAXF=()=>PROMPTS.length*Math.max(...TIERS.map(t=>t.pts))*M;
+const $=s=>document.querySelector(s), app=$("#app");
+const esc=s=>String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const norm=s=>s.toLowerCase().replace(/\+/g," plus ").replace(/#/g," sharp ").normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/[^a-z0-9 ]/g,"").replace(/^the /,"").replace(/\s+/g," ").trim();
+const stem=s=>s.replace(/(es|s)$/,'');
+function lev(a,b){const d=[];for(let i=0;i<=a.length;i++){d[i]=[i];}for(let j=1;j<=b.length;j++)d[0][j]=j;
+ for(let i=1;i<=a.length;i++)for(let j=1;j<=b.length;j++)d[i][j]=Math.min(d[i-1][j]+1,d[i][j-1]+1,d[i-1][j-1]+(a[i-1]===b[j-1]?0:1));
+ return d[a.length][b.length]}
+function index(p){const out=[];TIERS.forEach((t,ti)=>(p[t.id]||"").split(",").forEach(raw=>{
+ const names=raw.split("/").map(x=>x.trim()).filter(Boolean);names.forEach(n=>out.push({n:norm(n),tier:ti,label:names[0]}))}));return out}
+function match(input,idx){const a=norm(input);if(!a)return null;let best=null,bd=99;
+ for(const e of idx){const pad=" "+e.n+" ",apad=" "+a+" ";
+  let d=Math.min(lev(a,e.n),lev(stem(a),stem(e.n)),lev(a.split(" ").sort().join(" "),e.n.split(" ").sort().join(" ")),lev(a.replace(/ /g,""),e.n.replace(/ /g,"")));
+  if((a.length>=4&&pad.includes(apad))||(e.n.length>=4&&apad.includes(pad)))d=Math.min(d,1);
+  const tol=e.n.length>=10?3:e.n.length>=7?2:e.n.length>=4?1:0;if(d<=tol&&d<bd){bd=d;best=e}}return best}
+
+let i,depth,log,timer;
+const PPM=5,ZONES=[[250,"Twilight zone"],[500,"Midnight zone"],[800,"The abyss"]];
+const setDepth=()=>{const t=Math.sqrt(Math.min(depth/MAX,1));const s=document.body.style;
+ s.setProperty("--l",(34-29*t).toFixed(1));s.setProperty("--h",(198+27*t).toFixed(0));if($("#ruler"))place()};
+function place(){const y=innerHeight*.3,dd=Math.abs(depth-(place.p||0));place.p=depth;$("#ruler").style.transitionDuration=Math.min(3,.5+dd*.015)+"s";$("#ruler").style.transform=`translateY(${y-depth*PPM}px)`;
+ $("#mark").style.top=y+"px";$("#sun").style.opacity=Math.max(0,1-depth/250)}
+function sea(){
+ let s=$("#sea");if(!s){s=document.createElement("div");s.id="sea";s.innerHTML='<div id="sun"></div><div id="ruler"></div><div id="mark"></div>';document.body.prepend(s)}
+ const top=Math.max(MAX,1000);let h="";
+ for(let m=0;m<=top;m+=10){const y=m*PPM,mj=m%50===0;h+=`<i class="tk${mj?" mj":""}" style="top:${y}px"></i>`;
+  if(mj&&m>0&&m%100===0)h+=`<i class="lb" style="top:${y}px">${m} m</i>`}
+ h+=`<div class="zn" style="top:0"><span>Surface</span></div>`;
+ ZONES.forEach(([m,n])=>{if(m<=top)h+=`<div class="zn" style="top:${m*PPM}px"><span>${n}</span></div>`});
+ $("#ruler").innerHTML=h;place()}
+addEventListener("resize",()=>{if($("#ruler"))place()});
+
+function start(){MAX=MAXF();i=0;depth=0;log=[];setDepth();sea();
+ app.innerHTML=`<h1>Deep Dive</h1>
+ <p class="lede">${PROMPTS.length} prompts, ${SECONDS} seconds each. Common answers barely count. Rare ones take you deeper.</p>
+ <div class="btns"><button id="go">Start diving</button><button class="ghost" id="edit">Edit game</button></div>`;
+ $("#go").onclick=play;$("#edit").onclick=editor}
+
+function play(){
+ const p=PROMPTS[i];let left=SECONDS;
+ app.innerHTML=`<div class="hud"><span>Prompt ${i+1} of ${PROMPTS.length}</span><span class="depth">${depth} m</span></div>
+ <div class="air" id="air"><i></i></div>
+ <h2 class="prompt">${esc(p.q)}</h2>
+ <input id="ans" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="Your answer" aria-label="Your answer">
+ <button id="sub">Lock in answer</button>`;
+ const inp=$("#ans");inp.focus();
+ let done=false;
+ const submit=()=>{if(done)return;done=true;clearInterval(timer);reveal(p,inp.value.trim())};
+ $("#sub").onclick=submit;
+ inp.onkeydown=e=>{if(e.key==="Enter")submit()};
+ const t0=Date.now();
+ timer=setInterval(()=>{left=SECONDS-(Date.now()-t0)/1000;
+  $("#air i").style.width=Math.max(left/SECONDS*100,0)+"%";
+  $("#air").classList.toggle("low",left<8);
+  if(left<=0)submit()},100)}
+
+function reveal(p,ans,forced){
+ if(forced)log.pop();
+ const hit=forced||match(ans,index(p));
+ const pts=hit?TIERS[hit.tier].pts:0, m=pts*M;
+ depth+=m;setDepth();
+ log.push({q:p.q,ans,hit,m});
+ const top=(p.abyssal||"").split(",")[0].split("/")[0].trim();
+ const last=i===PROMPTS.length-1;
+ app.innerHTML=`<div class="hud"><span>Prompt ${i+1} of ${PROMPTS.length}</span><span class="depth">${depth} m</span></div>
+ ${hit?`<span class="chip t${hit.tier}">${TIERS[hit.tier].name}</span>
+  <div class="big gain t${hit.tier}">+${m} m</div><p class="sub">You said ${esc(ans)}.</p>${norm(ans)!==hit.n?`<p class="sub">Autocorrected to ${esc(hit.label)}.</p>`:""}`
+  :`<span class="chip">Not on the list</span><div class="big gain">+0 m</div>
+  <p class="sub">${ans?`You said ${esc(ans)}.`:"No answer in time."}</p>`}
+ ${top?`<p class="sub">One of the deepest answers: ${esc(top)}.</p>`:""}
+ <div class="btns"><button id="next">${last?"See your dive":"Next prompt"}</button>${!hit&&ans?`<button class="ghost" id="vouch">Count it anyway</button>`:""}</div>`;
+ $("#next").focus();
+ if($("#vouch"))$("#vouch").onclick=()=>reveal(p,ans,{tier:2,label:ans,n:norm(ans),v:1});
+ $("#next").onclick=()=>{i++;last?end():play()}}
+
+const KEY="deepdive-game-v1";
+const snap=()=>({prompts:PROMPTS,pts:TIERS.map(t=>t.pts),seconds:SECONDS});
+const code=()=>btoa(unescape(encodeURIComponent(JSON.stringify(snap()))));
+const decode=s=>JSON.parse(decodeURIComponent(escape(atob(s.trim()))));
+function apply(g){if(!g||!Array.isArray(g.prompts)||!g.prompts.length)throw 0;
+ PROMPTS=g.prompts.map(p=>({q:String(p.q||""),plankton:p.plankton||"",mackerel:p.mackerel||"",anglerfish:p.anglerfish||"",viperfish:p.viperfish||"",abyssal:p.abyssal||""}));
+ const pts=(g.pts||[]).slice();if(pts.length===4)pts.splice(3,0,85);pts.forEach((v,k)=>{if(TIERS[k]&&v!==""&&+v>=0)TIERS[k].pts=+v});
+ if(+g.seconds>=5)SECONDS=+g.seconds}
+const persist=()=>{try{localStorage.setItem(KEY,JSON.stringify(snap()))}catch(_){}};
+function load(){try{const s=localStorage.getItem(KEY);if(s)apply(JSON.parse(s))}catch(_){} }
+
+function editor(){
+ const d=JSON.parse(JSON.stringify(PROMPTS));
+ const collect=()=>{document.querySelectorAll(".ed[data-n]").forEach(c=>{const p=d[+c.dataset.n];p.q=c.querySelector(".q").value;c.querySelectorAll(".a").forEach(a=>p[a.dataset.t]=a.value)});
+  return {prompts:d,pts:[...document.querySelectorAll(".pts")].map(x=>x.value),seconds:$("#secs").value}};
+ const commit=()=>{const g=collect();g.prompts=g.prompts.filter(p=>p.q.trim());
+  try{apply(g)}catch(_){$("#msg").textContent="Add at least one prompt with a question.";return false}persist();return true};
+ const draw=()=>{
+  app.innerHTML=`<h2>Edit game</h2>
+  <p class="sub">Separate answers with commas. Use / between alternative spellings of one answer, like Eswatini/Swaziland. Answers you don't list score nothing.</p>
+  <div class="ed"><label>Seconds per prompt<input type="number" id="secs" min="5" value="${SECONDS}"></label>
+  ${TIERS.map(t=>`<label>Points for ${t.name}<input type="number" class="pts" min="0" value="${t.pts}"></label>`).join("")}</div>
+  ${d.map((p,n)=>`<div class="ed" data-n="${n}"><label>Prompt ${n+1}<input class="q" value="${esc(p.q)}"></label>
+   ${TIERS.map(t=>`<label>${t.name} answers<textarea class="a" data-t="${t.id}" rows="2">${esc(p[t.id]||"")}</textarea></label>`).join("")}
+   <button class="ghost del" data-n="${n}">Delete prompt</button></div>`).join("")}
+  <div class="btns"><button class="ghost" id="add">Add prompt</button><button class="ghost" id="clrq">Clear all questions</button><button class="ghost" id="rst">Use built-in questions</button></div>
+  <div class="ed"><label>Load a game code from a friend<textarea id="imp" rows="2" placeholder="Paste code here"></textarea></label><button class="ghost" id="load">Load code</button></div>
+  <p class="note" id="msg">Your game saves in this browser. To play the same game on other phones, copy the game code and send it to them.</p>
+  <div class="btns"><button id="save">Save and play</button><button class="ghost" id="share">Copy game code</button><button class="ghost" id="cancel">Cancel</button></div>`;
+  $("#add").onclick=()=>{collect();d.push({q:"",plankton:"",mackerel:"",anglerfish:"",viperfish:"",abyssal:""});draw()};
+  $("#rst").onclick=()=>{d.length=0;DEFAULTS.forEach(p=>d.push({...p}));draw()};
+  let armed=false;$("#clrq").onclick=e=>{if(!armed){armed=true;e.target.textContent="Tap again to clear everything";return}
+   d.length=0;for(let k=0;k<10;k++)d.push({q:"",plankton:"",mackerel:"",anglerfish:"",viperfish:"",abyssal:""});draw()};
+  document.querySelectorAll(".del").forEach(b=>b.onclick=()=>{collect();d.splice(+b.dataset.n,1);draw()});
+  $("#save").onclick=()=>{if(commit())start()};
+  $("#cancel").onclick=start;
+  $("#share").onclick=async e=>{if(!commit())return;try{await navigator.clipboard.writeText(code());e.target.textContent="Copied"}catch(_){$("#msg").textContent="Copy isn't available here."}};
+  $("#load").onclick=()=>{try{apply(decode($("#imp").value));persist();d.length=0;PROMPTS.forEach(p=>d.push({...p}));draw()}catch(_){$("#msg").textContent="That game code didn't work."}};
+ };
+ draw()}
+
+const BKEY="deepdive-board-v1";
+const gid=()=>{let h=0;for(const c of PROMPTS.map(p=>p.q).join("|"))h=(h*31+c.charCodeAt(0))>>>0;return h.toString(36)};
+const getName=()=>{try{return localStorage.getItem("deepdive-name")||"Player"}catch(_){return"Player"}};
+const rcode=r=>btoa(unescape(encodeURIComponent(JSON.stringify(r))));
+const rdecode=s=>JSON.parse(decodeURIComponent(escape(atob(s.trim()))));
+let board=[];
+const saveBoard=()=>{try{localStorage.setItem(BKEY,JSON.stringify(board))}catch(_){}};
+
+function chart(){
+ const n=PROMPTS.length,TC=["#B4BCC2","#9CD3F5","#FF6B6B","#B48CFF","#FFD24A"];
+ const Wd=360,Ht=420,L=46,R=12,T=16,B=42,W=Wd-L-R,H=Ht-T-B;
+ const top=Math.max(...TIERS.map(t=>t.pts))*M,mx=top*1.12;
+ const Y=m=>T+m/mx*H,X=k=>L+(k+.5)*W/n;
+ const step=top<=100?25:top<=200?50:Math.ceil(top/4/50)*50;
+ const s=`<svg viewBox="0 0 ${Wd} ${Ht}" width="100%" role="img" aria-label="Chart of how deep each answer took you"><defs>
+ <linearGradient id="wt" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff" stop-opacity=".22"/><stop offset="1" stop-color="#000" stop-opacity=".25"/></linearGradient>
+ <filter id="gl" x="-70%" y="-70%" width="240%" height="240%"><feGaussianBlur in="SourceGraphic" stdDeviation="2.6" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+ <g id="cr0"><circle cx="-2" cy="-6" r="7" fill-opacity=".16" stroke="currentColor" stroke-width="1.6"/><circle cx="6" cy="5" r="4.5" fill-opacity=".16" stroke="currentColor" stroke-width="1.4"/><circle cx="-6" cy="8" r="2.6" fill-opacity=".16" stroke="currentColor" stroke-width="1.2"/><path d="M-6-9A4 4 0 0 1-2-10.5" fill="none" stroke="#fff" stroke-opacity=".85" stroke-width="1.4" stroke-linecap="round"/><circle cx="5" cy="3.6" r="1" fill="#fff" fill-opacity=".85"/></g>
+ <g id="cr1"><g transform="rotate(90)"><path d="M12 0C8-8-4-9-8-4L-14-8L-12 0L-14 8L-8 4C-4 9 8 8 12 0Z"/><path d="M2-6L-3-11L-5-5Z" fill-opacity=".6"/><path d="M10 0C6 4-2 5-7 3C-1 6 7 5 10 0Z" fill="#fff" fill-opacity=".3"/><path d="M4-5C6-2 6 2 4 5" fill="none" stroke="#000" stroke-opacity=".3"/><circle cx="7" cy="-2" r="1.9" fill="#fff"/><circle cx="7.4" cy="-2" r=".9" fill="#06293A"/></g></g>
+ <g id="cr2"><g transform="rotate(90)"><path d="M-14 0C-8-7 0-6 2-3V3C0 6-8 7-14 0Z"/><path d="M-14 0L-18-6L-9-4ZM-14 0L-18 6L-9 4Z" fill-opacity=".7"/><path d="M2-3C6-4 8-2 8 0C8 2 6 4 2 3Z"/><path d="M8-1.5C12-3 14-4 17-3M8 0H18M8 1.5C12 3 14 4 17 3M8-.7C12-1 14-1 15-2" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="-6" cy="-1.5" r="1.2" fill="#fff" fill-opacity=".4"/><circle cx="-9" cy="1.5" r="1" fill="#fff" fill-opacity=".4"/><circle cx="4" cy="-2" r="1.4" fill="#fff"/><circle cx="4.3" cy="-2" r=".7" fill="#06293A"/></g></g>
+ <g id="cr3"><g transform="rotate(90)"><path d="M-12 0C-12-9 2-11 8-5C12-2 12 4 8 6C2 11-12 9-12 0Z"/><path d="M-12 0L-18-5V5Z" fill-opacity=".7"/><path d="M-6-8L-9-12L-3-9Z" fill-opacity=".7"/><path d="M-10 4C-4 8 4 8 8 5C2 9-6 9-10 4Z" fill="#fff" fill-opacity=".22"/><path d="M11 1C7 3 5 5 3 5" fill="none" stroke="#06293A" stroke-width="1.2" stroke-linecap="round"/><path d="M9 1.5L8 4L6.7 2.3M6 2.8L5.3 4.8L4.2 3.6" fill="#fff"/><path d="M3-8C4-14 9-15 12-12" fill="none" stroke="currentColor" stroke-width="1.2"/><circle cx="12" cy="-12" r="2.8" fill="#FFF3A6"/><circle cx="6" cy="-2" r="2.2" fill="#fff"/><circle cx="6.5" cy="-2" r="1" fill="#06293A"/></g></g>
+ <g id="cr4"><g transform="rotate(90)"><path d="M9-3C6-9-3-9-8-4C-11 0-9 6-4 8" fill="none" stroke="currentColor" stroke-width="6" stroke-linecap="round"/><path d="M9-3C6-9-3-9-8-4C-11 0-9 6-4 8" fill="none" stroke="#000" stroke-opacity=".3" stroke-width="6" stroke-dasharray="1 3.2"/><path d="M-4 8L-9 12M-4 8L-6 13M-4 8L-2 12" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/><circle cx="10.5" cy="-3.5" r="3.3"/><path d="M12-5L18-6M11-6C14-10 17-10 21-12M12-4.5C17-8 21-7 23-9" fill="none" stroke="currentColor" stroke-width=".9" stroke-linecap="round"/><path d="M4-1L3 3M0 0L-1 4M-4 1L-5 5" stroke="currentColor" stroke-width="1" stroke-linecap="round"/><circle cx="12" cy="-4.5" r="1" fill="#06293A"/></g></g>`;
+ let defs="",body=`<rect x="${L}" y="${T}" width="${W}" height="${H}" rx="8" fill="url(#wt)"/>`;
+ for(let m=0;m<=top;m+=step)body+=`<line x1="${L}" x2="${L+W}" y1="${Y(m)}" y2="${Y(m)}" stroke="#fff" stroke-opacity=".14"/><text x="${L-6}" y="${Y(m)+4}" text-anchor="end" font-size="11" fill="#cfe3ea">${m} m</text>`;
+ log.forEach((r,k)=>{const x=X(k),m=r.m;
+  body+=`<text x="${x}" y="${Ht-24}" text-anchor="middle" font-size="11" fill="#cfe3ea">${k+1}</text>`;
+  if(!r.hit||!m){body+=`<circle cx="${x}" cy="${T+9}" r="5" fill="none" stroke="#B4BCC2" stroke-dasharray="2 2"><title>No score</title></circle>`;return}
+  const c=TC[r.hit.tier]||TC[0],y=Y(m);
+  defs+=`<linearGradient id="tr${k}" gradientUnits="userSpaceOnUse" x1="0" y1="${T}" x2="0" y2="${y}"><stop offset="0" stop-color="${c}" stop-opacity="0"/><stop offset="1" stop-color="${c}" stop-opacity=".7"/></linearGradient>`;
+  body+=`<line x1="${x}" x2="${x}" y1="${T}" y2="${y-10}" stroke="url(#tr${k})" stroke-width="3" stroke-linecap="round"/>
+  <use href="#cr${r.hit.tier}" transform="translate(${x} ${y}) scale(1.3)" color="${c}" fill="${c}" filter="url(#gl)"><title>${esc(r.ans)}, ${m} m</title></use>
+  <text x="${x}" y="${y+32}" text-anchor="middle" font-size="11" font-weight="600" fill="${c}">${m}</text>`});
+ return s+defs+`</defs>`+body+`<text x="${L+W/2}" y="${Ht-6}" text-anchor="middle" font-size="12" fill="#cfe3ea">Question</text></svg>`}
+
+function end(){
+ try{board=JSON.parse(localStorage.getItem(BKEY)||"[]")}catch(_){board=[]}
+ const me={id:Date.now().toString(36)+Math.random().toString(36).slice(2,6),g:gid(),n:getName(),d:depth,a:log.map(r=>[r.ans,r.hit?r.hit.tier:-1,r.hit?r.hit.label:r.ans])};
+ board.push(me);saveBoard();
+ const miss=log.filter(r=>r.ans&&(!r.hit||r.hit.v)).map(r=>r.ans);
+ const poss=PROMPTS.map((p,k)=>{const mine=log[k];
+  const gs=TIERS.map((t,ti)=>({t,ti,l:(p[t.id]||"").split(",").map(x=>x.split("/")[0].trim()).filter(Boolean)})).filter(g=>g.l.length).reverse();
+  return `<details class="pa"><summary>${esc(p.q)}</summary>${gs.map(g=>`<p class="tg t${g.ti}">${g.t.name}, ${g.t.pts} m</p><p class="ans">${g.l.map(a=>`<span class="${mine.hit&&mine.hit.tier===g.ti&&norm(mine.hit.label)===norm(a)?"you":""}">${esc(a)}</span>`).join(", ")}</p>`).join("")}</details>`}).join("");
+ app.innerHTML=`<p class="sub">You reached</p><h1>${depth} m</h1><p class="lede" id="rank"></p>
+ <div class="ed"><label>Your name<input id="nm" maxlength="20" value="${esc(me.n)}"></label></div>
+ <h2 class="sec">Your descent</h2>${chart()}<p class="sub">Each creature shows how deep that answer took you: ${["bubbles","fish","squid","anglerfish","shrimp"].map((c,i)=>c+" for "+TIERS[i].name).join(", ")}. Dotted circles scored nothing.</p>
+ <h2 class="sec">Your dive, answer by answer</h2><div id="cmp"></div>
+ <h2 class="sec">Scoreboard</h2><div id="sb"></div>
+ <div class="ed"><label>Add a friend's result code<textarea id="fc" rows="2" placeholder="Paste code here"></textarea></label><button class="ghost" id="addf">Add result</button></div>
+ <p class="note" id="msg">Results are kept in this browser. Friends on other phones can tap Copy result code and send it to you.</p>
+ <h2 class="sec">Every possible answer</h2><p class="sub">Tap a question to see all its answers, rarest first. Yours is underlined.</p>${poss}
+ ${miss.length?`<p class="note">Not on the list: ${miss.map(esc).join(", ")}. Add any that should count in Edit game.</p>`:""}
+ <div class="btns"><button id="cc">Copy result code</button><button class="ghost" id="again">Dive again</button><button class="ghost" id="clr">Clear scoreboard</button></div>`;
+ const draw=()=>{
+  const all=board.filter(r=>r.g===me.g).sort((a,b)=>b.d-a.d),others=all.filter(r=>r.id!==me.id);
+  const rk=all.findIndex(r=>r.id===me.id)+1;
+  $("#rank").textContent=`Out of a possible ${MAX} m. `+(others.length?`You're ranked ${rk} of ${all.length}, deeper than ${others.filter(r=>r.d<me.d).length} of ${others.length} other players.`:"You're the first on the scoreboard.");
+  $("#sb").innerHTML=all.map((r,n)=>`<div class="row"><span>${n+1}. ${esc(r.n)}${r.id===me.id?" (you)":""}</span><b>${r.d} m</b></div>`).join("");
+  $("#cmp").innerHTML=log.map((r,k)=>{
+   const key=norm(r.hit?r.hit.label:r.ans);
+   const oth=others.map(o=>{const a=o.a[k]||["",-1," "];return {n:o.n,ans:a[0],t:a[1],same:!!key&&norm(a[2]||a[0])===key}});
+   const same=oth.filter(o=>o.same).length;
+   return `<div class="row"><span>${esc(PROMPTS[k].q)}</span><b class="${r.hit?"t"+r.hit.tier:""}">${r.m} m</b>
+   <small>You: ${r.ans?esc(r.ans):"no answer"}${r.hit?", "+TIERS[r.hit.tier].name:", not on the list"}</small>
+   ${oth.length?`<small>${key?(same?`${same} of ${oth.length} other players said the same. `:"Nobody else said that. "):""}${oth.map(o=>`${esc(o.n)}: <span class="${o.t>=0?"t"+o.t:""}">${esc(o.ans||"none")}</span>`).join(", ")}</small>`:""}</div>`}).join("")};
+ draw();
+ $("#nm").oninput=e=>{me.n=e.target.value.trim()||"Player";try{localStorage.setItem("deepdive-name",me.n)}catch(_){}saveBoard();draw()};
+ $("#again").onclick=start;
+ $("#cc").onclick=async e=>{try{await navigator.clipboard.writeText(rcode(me));e.target.textContent="Copied"}catch(_){$("#msg").textContent="Copy isn't available here."}};
+ $("#clr").onclick=()=>{board=[me];saveBoard();draw()};
+ $("#addf").onclick=()=>{try{const r=rdecode($("#fc").value);
+  if(!r||!r.id||!Array.isArray(r.a)||typeof r.d!=="number")throw 0;
+  if(r.g!==me.g){$("#msg").textContent="That result is from a different set of questions.";return}
+  if(board.some(x=>x.id===r.id)){$("#msg").textContent="That result is already on the scoreboard.";return}
+  board.push({id:String(r.id),g:r.g,n:String(r.n||"Player").slice(0,20),d:r.d,a:r.a.map(x=>[String(x[0]||""),+x[1],String(x[2]||"")])});
+  saveBoard();$("#fc").value="";$("#msg").textContent="Added.";draw()}catch(_){$("#msg").textContent="That result code didn't work."}};
+}
+
+const DEFAULTS=JSON.parse(JSON.stringify(PROMPTS));
+load();start();
+</script>
+</body>
+</html>
